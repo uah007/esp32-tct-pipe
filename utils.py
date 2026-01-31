@@ -1,10 +1,8 @@
 import subprocess
-import time
 
 def kill_chrome_process(pid):
     try:
         subprocess.run(f"taskkill /F /PID {pid}", shell=True, check=True)
-        time.sleep(1)
     except subprocess.CalledProcessError:
         pass
 

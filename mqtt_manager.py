@@ -1,72 +1,103 @@
-import paho.mqtt.client as mqtt
 import threading
-import time
+import paho.mqtt.client as mqtt
+
 
 class MQTTManager:
-    def __init__(self, log_func, history_store):
+    def __init__(self, log_func, history_store, node_manager=None):
         self.log = log_func
-        self.history_store = history_store
+        self.history = history_store
+        self.node_manager = node_manager
+
         self.client = None
         self.connected = False
-        self.current_config = None
 
-    # ================= Connect =================
-    def connect(self, config):
-        self.current_config = config
+        self.broker = ""
+        self.port = 1883
+        self.topic = ""
+
+        self.username = None
+        self.password = None
+
+    # ================= DEPENDENCIES =================
+
+    def set_node_manager(self, node_manager):
+        self.node_manager = node_manager
+
+    # ================= CONNECTION =================
+
+    def apply_settings(self, broker, port, topic, username=None, password=None):
+        self.broker = broker
+        self.port = int(port)
+        self.topic = topic
+        self.username = username or None
+        self.password = password or None
+
+        self._connect()
+
+    def _connect(self):
+        if self.client:
+            try:
+                self.client.disconnect()
+            except Exception:
+                pass
+
         self.client = mqtt.Client()
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
 
-        if config.get("login") and config.get("password"):
-            self.client.username_pw_set(config["login"], config["password"])
+        if self.username:
+            self.client.username_pw_set(self.username, self.password)
+
+        self.client.on_connect = self._on_connect
+        self.client.on_message = self._on_message
+
+        self.log(f"MQTT connecting to {self.broker}:{self.port} ...")
 
         try:
-            self.client.connect(config["broker"], int(config["port"]))
-            threading.Thread(target=self.client.loop_start, daemon=True).start()
-            self.log(f"MQTT connecting to {config['broker']}:{config['port']} ...")
+            self.client.connect(self.broker, self.port, keepalive=30)
         except Exception as e:
             self.log(f"MQTT connection ERROR: {e}")
+            return
 
-    def reconnect(self, config):
-        if self.client:
-            self.client.disconnect()
-        self.connect(config)
+        threading.Thread(
+            target=self.client.loop_forever,
+            daemon=True
+        ).start()
 
-    # ================= Publish =================
-    def send(self, config, callback=None):
-        self.connect(config)
-        topic = config["topic"]
-        payload = config.get("payload", "test")  # по умолчанию тест
+    # ================= CALLBACKS =================
 
-        def wait_and_publish():
-            # Ждём подключения
-            t0 = time.time()
-            while not self.connected:
-                if time.time() - t0 > 5:
-                    self.log("MQTT ERROR: Timeout waiting for connection")
-                    return
-                time.sleep(0.1)
-            try:
-                self.client.publish(topic, payload, retain=True)
-                self.log(f"MQTT published to {topic}: {payload}")
-                # Сохраняем историю
-                for k in ["topic", "broker", "port", "login", "password"]:
-                    if k in config:
-                        self.history_store.save(k, config[k])
-                if callback:
-                    callback()
-            except Exception as e:
-                self.log(f"MQTT send ERROR: {e}")
-
-        threading.Thread(target=wait_and_publish, daemon=True).start()
-
-    # ================= Callbacks =================
-    def on_connect(self, client, userdata, flags, rc):
-        self.connected = True
+    def _on_connect(self, client, userdata, flags, rc):
+        self.connected = (rc == 0)
         self.log(f"MQTT connected rc={rc}")
-        topic = self.current_config.get("topic")
-        if topic:
-            client.subscribe(topic)
 
-    def on_message(self, client, userdata, msg):
-        self.log(f"MQTT received: {msg.payload.decode()}")
+        if self.connected and self.topic:
+            client.subscribe(self.topic)
+
+    def _on_message(self, client, userdata, msg):
+        try:
+            payload = msg.payload.decode()
+            self.log(f"MQTT received: {payload}")
+        except Exception:
+            pass
+
+    # ================= SEND =================
+
+    def send_payload(self, payload):
+        """
+        1. Публикуем MQTT
+        2. После публикации запускаем Node.js (если он привязан)
+        """
+
+        if not self.connected:
+            self.log("MQTT not connected")
+            return
+
+        if not self.topic:
+            self.log("MQTT topic is empty")
+            return
+
+        self.client.publish(self.topic, payload, retain=True)
+        self.log(f"MQTT published to {self.topic}: {payload}")
+
+        if self.node_manager:
+            self.node_manager.start()
+        else:
+            self.log("NodeManager not attached — Node.js не запущен")

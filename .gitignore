@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+
+history.json
+
+node_modules/
+
+chrome_profile_*/

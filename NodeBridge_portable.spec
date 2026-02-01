@@ -50,7 +50,7 @@ else:
     print("⚠️  server.js не найден! Добавьте его перед сборкой")
 
 a = Analysis(
-    ['src\\main.py'],
+    ['src\\main.pyw'],
     pathex=[],
     binaries=node_binaries,
     datas=node_datas,

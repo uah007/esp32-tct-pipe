@@ -1,37 +1,36 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.building.build_main import Analysis, PYZ, EXE
 
 block_cipher = None
 
-# Пути к Node.js (будут упакованы в EXE)
-# ВАЖНО: Укажите правильный путь к вашей установке Node.js
-NODE_DIR = r'C:\Program Files\nodejs'  # Стандартный путь установки Node.js
+# ============================================
+# Path to node.exe
+# ============================================
+NODE_EXE = r'nodejs_portable\node.exe'
+# ============================================
 
-# Собираем все файлы Node.js для включения в EXE
 node_binaries = []
 node_datas = []
 
-if os.path.exists(NODE_DIR):
-    # Добавляем основные исполняемые файлы Node.js
-    node_exe = os.path.join(NODE_DIR, 'node.exe')
-    if os.path.exists(node_exe):
-        node_binaries.append((node_exe, 'nodejs'))
-    
-    # Добавляем node_modules если они есть
-    node_modules = os.path.join(NODE_DIR, 'node_modules')
-    if os.path.exists(node_modules):
-        for root, dirs, files in os.walk(node_modules):
-            for file in files:
-                src = os.path.join(root, file)
-                rel_path = os.path.relpath(root, NODE_DIR)
-                node_datas.append((src, os.path.join('nodejs', rel_path)))
+# Check and add node.exe
+if os.path.exists(NODE_EXE):
+    print(f"Found node.exe: {NODE_EXE}")
+    node_binaries.append((NODE_EXE, 'nodejs'))
+else:
+    print(f"WARNING: node.exe not found at: {NODE_EXE}")
+    print("EXE will be built WITHOUT embedded Node.js!")
 
-# Добавляем server.js если он есть в проекте
+# Add server.js
 if os.path.exists('server.js'):
+    print("Found server.js")
     node_datas.append(('server.js', '.'))
+else:
+    print("WARNING: server.js not found!")
 
 a = Analysis(
-    ['src\\main.py'],
+    ['src\\main.pyw'],
     pathex=[],
     binaries=node_binaries,
     datas=node_datas,
@@ -62,11 +61,11 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # False - без консоли, True - с консолью (для отладки)
+    console=False,  # False - hides console (for GUI apps), True - shows console (for debugging)
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Можно добавить путь к .ico файлу: icon='assets\\icon.ico'
+    icon=None,
 )

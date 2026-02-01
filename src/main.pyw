@@ -44,7 +44,8 @@ DEFAULT_MQTT_PORT = 1883
 
 def kill_chrome_process(pid):
     try:
-        subprocess.run(f"taskkill /F /PID {pid}", shell=True, check=True)
+        subprocess.run(f"taskkill /F /PID {pid}", shell=True, check=True,
+                      creationflags=subprocess.CREATE_NO_WINDOW)
         time.sleep(1)
     except subprocess.CalledProcessError:
         pass
@@ -194,7 +195,7 @@ class App:
             "--no-default-browser-check",
             "--disable-extensions",
             url
-        ])
+        ], creationflags=subprocess.CREATE_NO_WINDOW)
 
         self.chrome_processes.append(proc)
         self.is_chrome_open = True

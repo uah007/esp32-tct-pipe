@@ -1,0 +1,1 @@
+﻿pyinstaller --clean NodeBridge_portable.spec

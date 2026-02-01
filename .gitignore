@@ -1,8 +1,41 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+*.egg
 
-history.json
+# PyInstaller
+*.spec.bak
+*.manifest
+*.spec~
 
-node_modules/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-chrome_profile_*/
+# Project specific
+src/history.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Temporary
+temp/
+tmp/
+*.tmp
